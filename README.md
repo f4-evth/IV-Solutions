@@ -1,2 +1,2 @@
 # IV-Solutions
-Solutions to some of Intervolga challenges for candidates 
+Tinkering with IV challenges just for fun and the sake of learning the language 
