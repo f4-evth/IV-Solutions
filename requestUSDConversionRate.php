@@ -12,16 +12,19 @@
 		if( strlen( $_POST['date'] ) == 10 )
 		{
 			sscanf( $_POST['date'], "%d-%d-%d", $year, $month, $day );
-			
+
 			// Check if the values are withing the acceptable ranges
-			if( ( $year > 1970 && $year <= 2019 ) &&  ( $month < 13 )
-				&& ( $day <= 31 - ( $month % 2 ) ) ) 
+			if( ( $year > 1970 && $year <= 2019 ) 
+				&& ( $month < 13 )
+				&& ( $day <= 31 - ( $month % 2 ) ) 
+				&& ( !($month == 2 && $day > 28 )) )
 			{
 				return array($year,$month,$day);
 			}
+
 			else return "Sorry, the date you entered is outside of acceptable range";
 		}
-		
+
 		// Data sent is unformatted
 		return false;
 	}
@@ -41,10 +44,10 @@
 			$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 			$pdo  = new PDO($dsn,$user,$pass);
 		}
-		
+
 		return $pdo;
 	}
-	
+
 	// Create table, so that the following queries won't fail
 	function prepareDB()
 	{
@@ -57,25 +60,25 @@
 		$sql .= ")";
 		$sql = $pdo->query( $sql );
 	}
-	
+
 	function insertDB( $params, $result )
 	{
 		$pdo = connectDB();
-		$sql = "INSERT INTO testing.valutes (year,month,day,value) VALUES(?,?,?,?)";		
+		$sql = "INSERT INTO testing.valutes (year,month,day,value) VALUES(?,?,?,?)";
 		$stmt = $pdo->prepare( $sql );
 		$params[3] = $result;
 		$stmt->execute( $params );
 	}
-		
+
 	// Try to get value from DB
 	function fetchDB( $yearMonthDay )
 	{
 		$pdo = connectDB();
-		
+
 		if( $pdo )
 		{
 			prepareDB( $pdo );
-			
+
 			$sql  = "SELECT value FROM testing.valutes WHERE year = ? AND month = ? AND day = ?; ";
 			$stmt = $pdo->prepare( $sql );
 			$stmt->execute( $yearMonthDay );
@@ -83,11 +86,11 @@
 			// Returns either Int or NULL if not found
 			return $stmt->fetch()[0];
 		}
-		
+
 		// Can't connect to DB - fallback to API
 		return false;
 	}
-	
+
 	function fetchAPI( $yearMonthDay )
 	{
 		// Prepare an API url
@@ -111,43 +114,49 @@
 		}
 		else return "Error: Unable to connect to API.";
 	}
-	
+
 	function getUSDConversionRate() : string
 	{
 		$yearMonthDay = sanitizeInput();
-		
+
 		if( is_array( $yearMonthDay ) )
 		{
 			// Try fetching from DB
 			$result = fetchDB( $yearMonthDay );
-			
+
 			// If not found
 			if( $result === NULL )
 			{
 				// Try fetching from API
 				$result = fetchAPI( $yearMonthDay );
-			
+
 				// If successful - add to local DB
 				if( is_numeric( $result ) )
-					insertDB( $yearMonthDay, $result );	
+					insertDB( $yearMonthDay, $result );
 			}
 		}
-		
+
 		// Error happened during input parsing
 		elseif( is_string( $yearMonthDay ) ) 
 				$result = $yearMonthDay;
-				
+
 		// Nothing has been passed
 		else $result = "Please, type in date in yyyy-mm-dd format";
 
 		// Return either the result or the error message
 		return $result;
 	}
-	
+
 	function printRate()
 	{
 		if( $_POST['date'] )
-			echo "At ".$_POST['date']." 1 USD costed ".getUSDConversionRate()." rubles";
+		{
+			$result = getUSDConversionRate();
+
+			if( is_numeric( $result ) ) 
+				printf( "At %s 1 USD costed %s rubles", $_POST['date'], $result );
+			else echo getUSDConversionRate($result);
+		}
 	}
 ?>
 <script src="ajax_upload.js"></script>
